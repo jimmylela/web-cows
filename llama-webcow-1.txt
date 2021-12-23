@@ -1,0 +1,117 @@
+20211117 (began)
+
+Created new RHEL8 VPS in Azure Cloud
+
+    Set username and chose SSH key
+
+    Allowed 80, 443, and 22
+
+Configured SecureCRT session to use key and SSH in to public IP
+
+Adjusted network firewall rules to allow SSH, HTTP, and HTTPS from various home, work, and Hy-Vee IPs
+
+$ sudo yum install -y nginx
+
+Followed http://nginx.org/en/docs/beginners_guide.html
+
+$ cp /etc/nginx/nginx.conf ~/nginx.conf.bak.20211118
+
+Commented out default server blocks
+
+Added
+<lines_added>
+## added by Jimmy 20211118
+server {
+    location / {
+        root /data/www;
+    }
+
+    location /images/ {
+        root /data;
+    }
+}
+</lines_added>
+
+$ sudo start nginx
+
+$ curl http://localhost
+
+Returned a 403
+
+$ cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.jimmy.20211120
+
+$ cp ~/nginx.conf.bak.20211118 /etc/nginx/nginx.conf
+
+sudo nginx -s reload
+
+$ curl http://localhost
+
+Now I get the default Nginx page
+
+So the problem was with my config file
+
+lots of troubleshooting, screwing with permissions
+
+problem was selinux
+
+$ setenforce 0
+
+Now I can curl and get my page
+
+Were any of my other changes needed?
+
+    I changed the owner of /data/* to nginx
+
+        $ sudo chown -R nginx:nginx /data/*
+
+    I changed the permissions on /data/* to 755
+
+        $ sudo chmod 755 /data 
+
+        (repeated for all the subdirectories and files cause I didn't know how to recurse)
+
+Renabled selinux
+
+    $ sudo setenfore 1
+
+Set selinx httpd_can_network_connect value to on
+
+    $ sudo setsebool -P httpd_can_network_connect on
+
+Curl still returned 403
+
+Changed selinx context for /data/www to httpd_sys_content_t
+
+    $ chcon -Rt httpd_sys_content_t /data/www
+
+ curl now works with selinux on!
+
+So at least the context command was necessary
+
+Maybe the selinux boolean command was necessary
+
+Maybe the chown command was necessary
+
+Maybe the chmod command was necessary
+
+Connections from outside did not work, despite the Azure network being configured to allow them from the necessary IPs
+
+Added firewall rules to allow http and https in from public zone
+
+    $ sudo firewall-cmd --zone=public --permanent --add-service=http
+    $ sudo firewall-cmd --zone=public --permanent --add-service=https
+    $ sudo firewall-cmd --reload
+
+Connections from the allowed IPs now work and my index.html page loads!
+
+Added /data/www/welcome.html with contents of ITA Group site down page with modifications
+
+    Set image link to https://freesvg.org/img/Upper-class-llama.png (https://unsplash.com/photos/GZa4QFmv0Zg did not work for some reason, I think because of the file type or size)
+
+Created Azure firewall rule to allow outbound HTTPS connections
+
+Site loaded with pic and styling!  http://llama-webcow-1.centralus.cloudapp.azure.com/welcome.html
+
+Enabled Bismark or whatever for remote access, then saw how much it was going to cost and disabled it
+
+Got serial console working from Azure, had to create a special storage account, not sure about charges
