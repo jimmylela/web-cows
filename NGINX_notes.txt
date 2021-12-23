@@ -1,0 +1,39 @@
+####nginix    ####
+
+## Good info on configuraiton file, repo differences, and site configuration files
+https://www.linode.com/docs/guides/how-to-configure-nginx/
+
+!! The problem is ALWAYS SELinux !!
+    Try disabling and see if it works
+    $ sudo setenforce 0
+
+Different repos may have different versions
+Distribution specific repos are sometimes outdated
+Nginix recommends installing from their official repo
+Debian/Ubuntu are different than RedHat and Ngini official
+    A big difference is 
+    Niginx official repo uses /conf.d/ directory
+    Debian/Ubuntu uses the sites-enabled directory
+    RedHat? don't care, use the official Nginx
+
+
+Nginx directory for web files seems to be /var/www
+
+https://www.nginx.com/resources/wiki/start/topics/examples/server_blocks/
+
+
+
+##nginx troubleshooting
+Server block name matches name in request host header?
+Server block root directory has the file requested?
+    Requested file's absolute path = server block root + path/file requested
+    Eg
+        server block root = /var/www/example.com
+        file requested = /images/example_image.jpg
+        file absolute path = /var/www/example.com/images/example_image.jpg
+    Verify by looking at /var/log/nginx/error.log, look for full path
+
+
+special characters in names?
+
+Linux vs Windows line endings?
