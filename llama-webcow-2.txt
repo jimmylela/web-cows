@@ -1,0 +1,273 @@
+##llama-webcow-1 begat ##llama-webcow-2
+
+## New Azure Virtual Machine
+RHEL 8.2
+cheapest cpu and memory
+Admin authentication via password, BitWarden
+Allowed 22, 80, and 443 inbound ports
+Standard HDD
+Network defaults
+Management > Monitoring > Boot diagnostics: Enable with custom storage account for serial console use
+Auto-shutdown at 1 AM Central Time
+
+## Edited Azure networking rules to only allow 22, 80, and 443 inbound from:  
+home (50.82.87.7)
+work WDM office (162.223.132.246)
+work ALT VDI (207.108.43.246)
+ForcePoint Chicago (208.87.237.0/24)
+Full string for future copyin: 50.82.87.7, 162.223.132.246, 207.108.43.246, 208.87.237.0/24
+
+## Logged into the serial console
+
+## Updated
+$ sudo yum update
+
+## Enabled official Nginx repo, installed Nginx from it
+https://www.nginx.com/resources/wiki/start/topics/tutorials/install/
+https://nginx.org/packages/rhel/8/
+http://nginx.org/en/linux_packages.html#RHEL-CentOS
+
+$ sudo vi /etc/yum.repos.d/nginx.repo
+
+[nginx]
+name=nginx repo
+baseurl=https://nginx.org/packages/rhel/8/x86_64/
+gpgcheck=0
+enabled=1
+
+$ sudo yum install nginx 
+## I think this installed it from the Nginx repo?
+
+## Modified firewall to allow inbounc connections on ports 80 and 443
+$ firewall-cmd --permanent --add-port={80/tcp,443/tcp}
+$ firewall-cmd --reload
+
+## Enabled and started nginx service
+$ systemctl enable nginx
+$ systemctl start nginx
+
+## Default nginx page works from work network
+http://40.122.193.131/
+
+
+-- next time: create new file in /etc/nginx/conf.d for new site
+
+Came back, couldn't load default page, finally remembered IP isn't static, it loaded fine on new IP, 40.122.175.23 
+
+Shut down, disassociated IP (IP resource?) with machine, configured DNS and static IP, reassociated IP, started, now the defaul Nginx responds at http://llama-webcow-2.centralus.cloudapp.azure.com/
+
+Now I'm getting the agent status not ready warnings I saw before, I don't think I saw them before messing with DNS
+
+## Created directory for test site and subdirectory for html files
+$ cd /var/www/
+$ sudo mkdir llama-webcow-2
+$ cd llama-webcow-2
+$ sudo mkdir html
+
+## Created default index page
+$ sudo vi /html/index.html
+
+<begin_below>
+            <!DOCTYPE html>
+            <html xmlns="http://www.w3.org/1999/xhtml">
+            <head>    
+                <style>
+                    html, body{
+                      height: 100%;
+                    }
+                    body {
+                        background-position: center center;
+                        background-size:  cover;
+                        background-color: #eaeaea;
+                    }
+                    .content {
+                        position:absolute;
+                        margin:auto;
+                        top:0;
+                        left: 0;
+                        bottom: 0;
+                        right: 0;
+                        width:400px;
+                        height:240px;
+                        text-align: center;
+                        background: #fff;
+                        padding: 30px;
+                        font-family: Arial, "sans-serif";
+                        font-size: 18px;
+                        line-height: 1.5;
+                        border-radius: 5px;
+                        box-shadow: 0 20px 60px 0 rgba(0, 0, 0, .15);
+                        -webkit-box-shadow: 0 20px 60px 0 rgba(0, 0, 0, .15);
+                    }
+                
+                
+                </style>
+            </head>
+            <body>
+            <div class="content">
+                <img src="https://itagroup.hs.llnwd.net/o40/csg/btr2018/downIcon.svg" width="100px" height="auto">
+                <p>Welcome to the landing page. More content coming soon!</p>
+            </div>    
+            </body>
+            </html>
+<end_above>
+
+## Created Nginx server block in /nginx/conf.d/
+$ sudo vi /etc/nginx/conf.d/llama-webcow-2.conf
+
+<begin_below>
+server {lama-webcow-2 llama-webcow-2]$ cat /etc/nginx/conf.d/llama-webcow-2.conf
+        listen 80;
+
+        root /var/www/llama-webcow-2/html;
+        index index.html index.htm;
+
+        server_name llama-webcow-2 www.llama-webow-2;
+
+        location / {
+                try_files $uri $uri/ =404;
+        }
+}
+<end_above>
+
+## tested configs, reloaded
+$ sudo nginx -t
+$ sudo nginx -s reload
+
+Set local host file:
+40.122.175.23    llama-webcow-2
+
+Browsed to http://llama-webcow-2, got 403
+
+## Modified permissions on /var/www/*
+$ sudo chmod -R 755 /var/www/
+
+Reloaded, still 403
+
+http://llama-webcow-2/index.html returns 404
+
+$ sudo chown -R nginx:nginx /var/www/*
+
+$ sudo nginx -s reload
+
+No change
+
+Things seem correct:
+
+[jlela@llama-webcow-2 log]$ cat /etc/nginx/conf.d/llama-webcow-2.conf
+server {
+        listen 80;
+
+        root /var/www/llama-webcow-2/html;
+        index index.html index.htm;
+
+        server_name llama-webcow-2 www.llama-webcow-2;
+
+        location / {
+                try_files $uri $uri/ =404;
+        }
+}
+[jlela@llama-webcow-2 log]$ cat /var/www/llama-webcow-2/html/
+cat: /var/www/llama-webcow-2/html/: Is a directory
+[jlela@llama-webcow-2 log]$ ll /var/www/llama-webcow-2/html/
+total 4
+-rwxr-xr-x. 1 nginx nginx 1374 Nov 27 19:30 index.html
+[jlela@llama-webcow-2 log]$
+[jlela@llama-webcow-2 log]$ cat /var/www/llama-webcow-2/html/index.html
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <style>
+            html, body{
+              height: 100%;
+            }
+            body {
+                    background-position: center center;
+                    background-size:  cover;
+                    background-color: #eaeaea;
+            }
+            .content {
+                    position:absolute;
+                    margin:auto;
+                    top:0;
+                    left: 0;
+                    bottom: 0;
+                    right: 0;
+                    width:400px;
+                    height:240px;
+                    text-align: center;
+                    background: #fff;
+                    padding: 30px;
+                    font-family: Arial, "sans-serif";
+                    font-size: 18px;
+                    line-height: 1.5;
+                    border-radius: 5px;
+                    box-shadow: 0 20px 60px 0 rgba(0, 0, 0, .15);
+                    -webkit-box-shadow: 0 20px 60px 0 rgba(0, 0, 0, .15);
+            }
+
+
+    </style>
+</head>
+<body>
+<div class="content">
+    <img src="https://itagroup.hs.llnwd.net/o40/csg/btr2018/downIcon.svg" width="100px" height="auto">
+    <p>Welcome to the landing page. More content coming soon!</p>
+</div>
+</body>
+</html>
+[jlela@llama-webcow-2 log]$
+
+
+## Changed permissions on /etc/nginx/conf.d
+$ sudo chmod -R 755 /etc/nginx/conf.d/
+$ sudo nginx -s reload
+$ sudo systemctl reload nginx
+
+No change
+
+
+Giving up for now
+
+
+Started VM again, same state
+
+Removed hyphens from all instances of llama-webcow-2, reloaded nginx, same
+
+Checked configs files, names, file paths, messed with file permissions, read logs, problem was SELinux
+
+    ! I think it's ALWAYS SELinux
+
+$ sudo setenforce 0
+
+$ sudo nginx -s reload
+
+Works!
+
+So again, unknown whether any of the permissions changes were needed. Next time start with disabling or figuring out SELinux
+
+
+Created llama-net.com site in GitHub personal repo, https://github.com/jimmylela/llama-net.com
+
+Created PAT (Personal Access Token)
+
+$ cd /var/www
+
+$ sudo yum install git
+
+$ sudo git clone https://github.com/jimmylela/llama-net.com.git
+
+$ cd /llama-net.com
+
+$ sudo git remote add upstream https://github.com/jimmylela/llama-net.com.git
+
+Messed around with files in Github
+
+$ sudo git pull upstream main
+
+Repeated last two until I had it working with a local image
+
+    Had to add /images directory under /html/ coudn't get ../ to work
+
+Added DNS records to llamarouter for llama-net.com and www.llama-net.com
+
